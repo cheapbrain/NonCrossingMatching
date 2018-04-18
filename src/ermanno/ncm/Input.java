@@ -42,6 +42,17 @@ public class Input {
 
 		return new Input(this.a.trim(a), this.b.trim(b), indA, indB);
 	}
+	
+	public Input advanceBack(int a, int b) {
+		SubArray[] indA = new SubArray[4];
+		SubArray[] indB = new SubArray[4];
+		for (int i = 0; i < 4; i++) {
+			indA[i] = this.indA[i].discardGreaterThan(this.a.start + a);
+			indB[i] = this.indB[i].discardGreaterThan(this.b.start + b);
+		}
+
+		return new Input(this.a.trimBack(a+1), this.b.trimBack(b+1), indA, indB);
+	}
 
 	private static int[] randomArray(int n) {
 		int[] a = new int[n];

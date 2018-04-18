@@ -35,6 +35,16 @@ public class Solution {
 		return matches.size();
 	}
 
+	public void reverse() {
+		if (matches.size() == 0) return;
+		int len = matches.size();
+		List<Match> reversed = new ArrayList<>(len);
+		for (int i = len-1; i >=0; i--) {
+			reversed.add(matches.get(i));
+		}
+		matches = reversed;
+	}
+	
 	public boolean isValid() {
 		for (int i = 0; i < size()-1; i++) {
 			if (matches.get(i).comesFirstThan(matches.get(i+1)) == false)

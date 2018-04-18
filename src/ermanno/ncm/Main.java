@@ -2,8 +2,7 @@ package ermanno.ncm;
 
 import java.util.UUID;
 
-import ermanno.ncm.Solver.Greedy;
-import ermanno.ncm.Solver.Memo;
+import ermanno.ncm.Solver.*;
 import grafica.GPlot;
 import grafica.GPointsArray;
 import processing.core.PApplet;
@@ -38,7 +37,7 @@ public class Main extends PApplet{
 	}
 
 	public void settings() {
-		size(950, 950);
+		size(650, 650);
 		smooth(4);
     }
 
@@ -54,12 +53,13 @@ public class Main extends PApplet{
 		plot.activateZooming(1.1f, CENTER, CENTER);
 
 		Input input = Input.random(1000);
-		for (int i = 0; i < 10; i++) {
+		//addPoints(new AllPoints(), input, plot, 0x33000000);
+		for (int i = 0; i < Math.log(input.a.length + input.b.length); i++) {
 			addPoints(new Greedy(new Solver.AbsoluteAddScore()), input, plot, 0x77FF0000);
-			//addPoints(new Greedy(new Solver.AbsoluteMaxScore()), input, plot, 0x770000FF);
+			addPoints(new InvertedGreedy(new Solver.AbsoluteAddScore()), input, plot, 0x770000FF);
 		}
-		//addPoints(new AllBest(), input, plot, 0x7700FF00);
-		addPoints(new Memo(), input, plot, 0x770000FF);
+		//addPoints(new Memo(), input, plot, 0x770000FF);
+		//addPoints(new AllBest(), input, plot, 0x3300FF00);
     }
 
     public void draw() {
@@ -75,7 +75,6 @@ public class Main extends PApplet{
 		plot.drawTitle();
 		plot.drawPoints();
 		plot.drawLine(1, 0);
-		plot.drawHistograms();
 		plot.endDraw();
     }
 

@@ -30,6 +30,14 @@ public class SubArray {
 	public int get(int index) {
 		return array[start + index];
 	}
+	
+	public int first() {
+		return array[start];
+	}
+	
+	public int last() {
+		return array[start + length - 1];
+	}
 
 	public SubArray trim(int start, int length) {
 		return new SubArray(array, this.start + start, length);
@@ -38,6 +46,10 @@ public class SubArray {
 	public SubArray trim(int start) {
 		return trim(start, length - start);
 	}
+	
+	public SubArray trimBack(int length) {
+		return trim(0, length);
+	}
 
 	public SubArray discardLesserThan(int th) {
 		int i;
@@ -45,6 +57,14 @@ public class SubArray {
 			if (array[start + i] >= th) break;
 		}
 		return trim(i);
+	}
+	
+	public SubArray discardGreaterThan(int th) {
+		int i;
+		for (i = length-1; i >= 0; i--) {
+			if (array[start + i] <= th) break;
+		}
+		return trimBack(i+1);
 	}
 
 	@Override

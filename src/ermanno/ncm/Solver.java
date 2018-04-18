@@ -32,8 +32,8 @@ public interface Solver {
 
 			for (int k = 0; k < 4; k++) {
 				if (input.indA[k].length <= 0 || input.indB[k].length <= 0) continue;
-				int ii = input.indA[k].get(0);
-				int jj = input.indB[k].get(0);
+				int ii = input.indA[k].first();
+				int jj = input.indB[k].first();
 				int i = ii - input.a.start;
 				int j = jj - input.b.start;
 				Match m = new Match(ii, jj);
@@ -55,8 +55,8 @@ public interface Solver {
 		public void getAllSolutions(Input input, int score, HashMap<Match, Integer> cache, HashSet<Match> matches) {
 			for (int k = 0; k < 4; k++) {
 				if (input.indA[k].length <= 0 || input.indB[k].length <= 0) continue;
-				int ii = input.indA[k].get(0);
-				int jj = input.indB[k].get(0);
+				int ii = input.indA[k].first();
+				int jj = input.indB[k].first();
 				int i = ii - input.a.start;
 				int j = jj - input.b.start;
 				Match m = new Match(ii, jj);
@@ -92,8 +92,8 @@ public interface Solver {
 
 			for (int k = 0; k < 4; k++) {
 				if (input.indA[k].length <= 0 || input.indB[k].length <= 0) continue;
-				int ii = input.indA[k].get(0);
-				int jj = input.indB[k].get(0);
+				int ii = input.indA[k].first();
+				int jj = input.indB[k].first();
 				int i = ii - input.a.start;
 				int j = jj - input.b.start;
 
@@ -115,8 +115,8 @@ public interface Solver {
 
 			for (int k = 0; k < 4; k++) {
 				if (input.indA[k].length <= 0 || input.indB[k].length <= 0) continue;
-				int ii = input.indA[k].get(0);
-				int jj = input.indB[k].get(0);
+				int ii = input.indA[k].first();
+				int jj = input.indB[k].first();
 				int i = ii - input.a.start;
 				int j = jj - input.b.start;
 				Match m = new Match(ii, jj);
@@ -147,6 +147,42 @@ public interface Solver {
 			return sol;
 		}
 	}
+	
+	public class InvertedGreedy implements Solver {
+		private ScoreFunction func;
+		public InvertedGreedy(ScoreFunction func) {
+			this.func = func;
+		}
+
+		public Solution solve(Input input) {
+			Solution sol = new Solution();
+			Match dummy = new Match(0,0);
+
+			for (;;) {
+				float max = Float.NEGATIVE_INFINITY;
+				Match next = dummy;
+
+				for (int k = 0; k < 4; k++) {
+					if (input.indA[k].length <= 0 || input.indB[k].length <= 0) continue;
+					Match temp = new Match(input.indA[k].last(), input.indB[k].last());
+					float tc = func.score(temp);
+					if ((tc + 2 *(float)Math.random() > max) || (tc == max && Math.random() > 0.5)) {
+						max = tc;
+						next = temp;
+					}
+				}
+				if (max == Float.NEGATIVE_INFINITY) break;
+
+				int i = next.a - input.a.start;
+				int j = next.b - input.b.start;
+				sol.add(next);
+				input = input.advanceBack(i-1, j-1);
+			}
+			sol.reverse();
+			return sol;
+		}
+		
+	}
 
 	public class Greedy implements Solver {
 		private ScoreFunction func;
@@ -156,17 +192,17 @@ public interface Solver {
 
 		public Solution solve(Input input) {
 			Solution sol = new Solution();
-			Match last = new Match(-1, -1);
+			Match dummy = new Match(0, 0);
 
 			for (;;) {
 				float max = Float.POSITIVE_INFINITY;
-				Match next = last;
+				Match next = dummy;
 
 				for (int k = 0; k < 4; k++) {
 					if (input.indA[k].length <= 0 || input.indB[k].length <= 0) continue;
-					Match temp = new Match(input.indA[k].get(0), input.indB[k].get(0));
-					float tc = func.score(last, temp) + 2 *(float)Math.random();
-					if (tc < max || (tc == max && Math.random() > 0.5)) {
+					Match temp = new Match(input.indA[k].first(), input.indB[k].first());
+					float tc = func.score(temp);
+					if ((tc + 2 *(float)Math.random() < max) || (tc == max && Math.random() > 0.5)) {
 						max = tc;
 						next = temp;
 					}
@@ -175,7 +211,6 @@ public interface Solver {
 
 				int i = next.a - input.a.start;
 				int j = next.b - input.b.start;
-				last = next;
 				sol.add(next);
 				input = input.advance(i+1, j+1);
 			}
@@ -186,29 +221,29 @@ public interface Solver {
 	}
 
 	public interface ScoreFunction {
-		public float score(Match prev, Match next);
+		public float score(Match next);
 	}
 
 	public class AbsoluteAddScore implements ScoreFunction {
-		public float score(Match prev, Match next) {
+		public float score(Match next) {
 			return next.a + next.b;
 		}
 	}
 
 	public class AbsoluteMaxScore implements ScoreFunction {
-		public float score(Match prev, Match next) {
+		public float score(Match next) {
 			return Math.max(next.a, next.b);
 		}
 	}
 
 	public class CustomScore implements ScoreFunction {
-		public float score(Match prev, Match next) {
+		public float score(Match next) {
 			return 0.1f * Math.max(next.a, next.b) + next.a + next.b;
 		}
 	}
 
 	public class RandomScore implements ScoreFunction {
-		public float score(Match prev, Match next) {
+		public float score(Match next) {
 			return (float)Math.random();
 		}
 	}
