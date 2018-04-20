@@ -1,11 +1,161 @@
 package ermanno.ncm;
 
+import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.HashSet;
 
 public interface Solver {
 
 	public Solution solve(Input input);
+
+	public class SearchSubset implements Solver {
+		private HashMap<Match, Integer> map = new HashMap<>();
+
+		public void reset() {
+			for (Match m: map.keySet()) {
+				map.put(m, 0);
+			}
+		}
+
+		public void add(Solution solution) {
+			for (Match m:solution.matches) {
+				map.put(m, 0);
+			}
+		}
+
+		public void addDiagonals(Input input, int range) {
+			int[] a = input.a.array;
+			int[] b = input.b.array;
+
+			for (int i = 0; i < a.length; i++) {
+
+				int start = Math.max(0, i-range);
+				int end = Math.min(b.length-1, i+range);
+				for (int j = start; j <= end; j++) {
+					if (a[i] == b[j]) {
+						map.put(new Match(i, j), 0);
+					}
+				}
+			}
+		}
+
+		public int memo(Input input) {
+			class State {
+				int best; int k; Match m; Input input;
+				public State(int best, int k, Match m, Input input) { this.best=best; this.k=k; this.m=m; this.input=input; }
+			}
+
+			int maxsize = Math.min(input.a.length, input.b.length);
+
+			ArrayDeque<State> stack= new ArrayDeque<>(maxsize);
+
+			State state = new State(0, 0, new Match(-1, -1), input);
+
+			while (true) {
+
+				if (state.k == 4) {
+					int score = state.best + 1;
+					map.put(state.m, state.best);
+					state = stack.pop();
+					if (score > state.best) state.best = score;
+				} else {
+					if (state.input.indA[state.k].length <= 0 || state.input.indB[state.k].length <= 0) {
+						state.k++;
+						continue;
+					}
+
+					int ii = state.input.firstA(state.k);
+					int jj = state.input.firstB(state.k);
+					state.k++;
+					int i = ii - state.input.a.start;
+					int j = jj - state.input.b.start;
+					Match m = new Match(ii, jj);
+
+					Integer sol = map.get(m);
+					if (sol == null) continue;
+					if (sol == 0) {
+						stack.push(state);
+						state = new State(0, 0, m, state.input.advance(i+1, j+1));
+					} else {
+						int score = sol + 1;
+						if (score > state.best) state.best = score;
+					}
+				}
+
+
+				if (state.m.a == -1 && state.k == 4) return state.best - 1;
+			}
+
+		}
+
+		public int memo2(Input input) {
+
+			int best = 0;
+
+			for (int k = 0; k < 4; k++) {
+				if (input.indA[k].length <= 0 || input.indB[k].length <= 0) continue;
+				int ii = input.firstA(k);
+				int jj = input.firstB(k);
+				int i = ii - input.a.start;
+				int j = jj - input.b.start;
+				Match m = new Match(ii, jj);
+
+				Integer sol = map.get(m);
+				if (sol == null) continue;
+				if (sol == 0) {
+					sol = 1 + memo(input.advance(i+1, j+1));
+					map.put(m, sol);
+				}
+
+				best = Math.max(best, sol);
+			}
+
+			return best;
+		}
+
+		public void getBestSolution(Input input, int score, Solution best) {
+			for (;;) {
+				boolean exit = true;
+				for (int k = 0; k < 4; k++) {
+					if (input.indA[k].length <= 0 || input.indB[k].length <= 0) continue;
+					int ii = input.firstA(k);
+					int jj = input.firstB(k);
+					int i = ii - input.a.start;
+					int j = jj - input.b.start;
+					Match m = new Match(ii, jj);
+
+					Integer sol = map.get(m);
+					if (sol == null) continue;
+					if (sol == score) {
+						best.add(m);
+						input = input.advance(i+1, j+1);
+						score--;
+						exit = false;
+						break;
+					}
+				}
+				if (exit) return;
+			}
+		}
+
+
+		@Override
+		public Solution solve(Input input) {
+			Solution sol = new Solution();
+			int score = memo(input);
+			getBestSolution(input, score, sol);
+			return sol;
+		}
+
+		public Solution allPoints() {
+			Solution sol = new Solution();
+			for(Match m: map.keySet()) {
+				sol.add(m);
+			}
+			return sol;
+		}
+
+	}
 
 	public class AllPoints implements Solver {
 
@@ -32,8 +182,8 @@ public interface Solver {
 
 			for (int k = 0; k < 4; k++) {
 				if (input.indA[k].length <= 0 || input.indB[k].length <= 0) continue;
-				int ii = input.indA[k].first();
-				int jj = input.indB[k].first();
+				int ii = input.firstA(k);
+				int jj = input.firstB(k);
 				int i = ii - input.a.start;
 				int j = jj - input.b.start;
 				Match m = new Match(ii, jj);
@@ -55,8 +205,8 @@ public interface Solver {
 		public void getAllSolutions(Input input, int score, HashMap<Match, Integer> cache, HashSet<Match> matches) {
 			for (int k = 0; k < 4; k++) {
 				if (input.indA[k].length <= 0 || input.indB[k].length <= 0) continue;
-				int ii = input.indA[k].first();
-				int jj = input.indB[k].first();
+				int ii = input.firstA(k);
+				int jj = input.firstB(k);
 				int i = ii - input.a.start;
 				int j = jj - input.b.start;
 				Match m = new Match(ii, jj);
@@ -92,8 +242,8 @@ public interface Solver {
 
 			for (int k = 0; k < 4; k++) {
 				if (input.indA[k].length <= 0 || input.indB[k].length <= 0) continue;
-				int ii = input.indA[k].first();
-				int jj = input.indB[k].first();
+				int ii = input.firstA(k);
+				int jj = input.firstB(k);
 				int i = ii - input.a.start;
 				int j = jj - input.b.start;
 
@@ -115,8 +265,8 @@ public interface Solver {
 
 			for (int k = 0; k < 4; k++) {
 				if (input.indA[k].length <= 0 || input.indB[k].length <= 0) continue;
-				int ii = input.indA[k].first();
-				int jj = input.indB[k].first();
+				int ii = input.firstA(k);
+				int jj = input.firstB(k);
 				int i = ii - input.a.start;
 				int j = jj - input.b.start;
 				Match m = new Match(ii, jj);
@@ -147,11 +297,13 @@ public interface Solver {
 			return sol;
 		}
 	}
-	
+
 	public class InvertedGreedy implements Solver {
 		private ScoreFunction func;
-		public InvertedGreedy(ScoreFunction func) {
+		private float rand;
+		public InvertedGreedy(ScoreFunction func, float rand) {
 			this.func = func;
+			this.rand = rand;
 		}
 
 		public Solution solve(Input input) {
@@ -164,9 +316,9 @@ public interface Solver {
 
 				for (int k = 0; k < 4; k++) {
 					if (input.indA[k].length <= 0 || input.indB[k].length <= 0) continue;
-					Match temp = new Match(input.indA[k].last(), input.indB[k].last());
+					Match temp = new Match(input.lastA(k), input.lastB(k));
 					float tc = func.score(temp);
-					if ((tc + 2 *(float)Math.random() > max) || (tc == max && Math.random() > 0.5)) {
+					if ((tc + rand *(float)Math.random() > max) || (tc == max && Math.random() > 0.5)) {
 						max = tc;
 						next = temp;
 					}
@@ -181,13 +333,15 @@ public interface Solver {
 			sol.reverse();
 			return sol;
 		}
-		
+
 	}
 
 	public class Greedy implements Solver {
 		private ScoreFunction func;
-		public Greedy(ScoreFunction func) {
+		private float rand;
+		public Greedy(ScoreFunction func, float rand) {
 			this.func = func;
+			this.rand = rand;
 		}
 
 		public Solution solve(Input input) {
@@ -200,9 +354,9 @@ public interface Solver {
 
 				for (int k = 0; k < 4; k++) {
 					if (input.indA[k].length <= 0 || input.indB[k].length <= 0) continue;
-					Match temp = new Match(input.indA[k].first(), input.indB[k].first());
+					Match temp = new Match(input.firstA(k), input.firstB(k));
 					float tc = func.score(temp);
-					if ((tc + 2 *(float)Math.random() < max) || (tc == max && Math.random() > 0.5)) {
+					if ((tc + rand *(float)Math.random() < max) || (tc == max && Math.random() > 0.5)) {
 						max = tc;
 						next = temp;
 					}

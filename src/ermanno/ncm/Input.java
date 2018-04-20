@@ -32,6 +32,38 @@ public class Input {
 		this.indB = indB;
 	}
 
+	public int getA(int i) {
+		return a.get(i);
+	}
+
+	public int getB(int i) {
+		return b.get(i);
+	}
+
+	public int getA(int k, int i) {
+		return indA[k].get(i);
+	}
+
+	public int getB(int k, int i) {
+		return indB[k].get(i);
+	}
+
+	public int firstA(int k) {
+		return indA[k].first();
+	}
+
+	public int firstB(int k) {
+		return indB[k].first();
+	}
+
+	public int lastA(int k) {
+		return indA[k].last();
+	}
+
+	public int lastB(int k) {
+		return indB[k].last();
+	}
+
 	public Input advance(int a, int b) {
 		SubArray[] indA = new SubArray[4];
 		SubArray[] indB = new SubArray[4];
@@ -42,7 +74,7 @@ public class Input {
 
 		return new Input(this.a.trim(a), this.b.trim(b), indA, indB);
 	}
-	
+
 	public Input advanceBack(int a, int b) {
 		SubArray[] indA = new SubArray[4];
 		SubArray[] indB = new SubArray[4];

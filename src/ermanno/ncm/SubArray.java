@@ -1,7 +1,7 @@
 package ermanno.ncm;
 
 public class SubArray {
-	private final int[] array;
+	public final int[] array;
 	public final int start;
 	public final int length;
 
@@ -30,11 +30,11 @@ public class SubArray {
 	public int get(int index) {
 		return array[start + index];
 	}
-	
+
 	public int first() {
 		return array[start];
 	}
-	
+
 	public int last() {
 		return array[start + length - 1];
 	}
@@ -46,7 +46,7 @@ public class SubArray {
 	public SubArray trim(int start) {
 		return trim(start, length - start);
 	}
-	
+
 	public SubArray trimBack(int length) {
 		return trim(0, length);
 	}
@@ -58,7 +58,7 @@ public class SubArray {
 		}
 		return trim(i);
 	}
-	
+
 	public SubArray discardGreaterThan(int th) {
 		int i;
 		for (i = length-1; i >= 0; i--) {

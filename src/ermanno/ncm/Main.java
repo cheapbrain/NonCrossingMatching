@@ -2,7 +2,9 @@ package ermanno.ncm;
 
 import java.util.UUID;
 
-import ermanno.ncm.Solver.*;
+import ermanno.ncm.Solver.Greedy;
+import ermanno.ncm.Solver.InvertedGreedy;
+import ermanno.ncm.Solver.SearchSubset;
 import grafica.GPlot;
 import grafica.GPointsArray;
 import processing.core.PApplet;
@@ -11,13 +13,12 @@ public class Main extends PApplet{
 
 	public static GPointsArray points1, points2;
 
-	public static void addPoints(Solver solver, Input input, GPlot plot, int color) {
+	public static void addPoints(Solution sol, GPlot plot, int color, String name) {
 		String id = UUID.randomUUID().toString();
-		Solution sol = solver.solve(input);
 		GPointsArray points = getPoints(sol);
 		plot.addLayer(id, points);
 		plot.getLayer(id).setPointColor(color);
-		System.out.println(solver.getClass()+": "+sol.size());
+		System.out.println(name+": "+sol.size());
 	}
 
 	public static GPointsArray getPoints(Solution sol) {
@@ -52,14 +53,19 @@ public class Main extends PApplet{
 		plot.activatePanning();
 		plot.activateZooming(1.1f, CENTER, CENTER);
 
-		Input input = Input.random(1000);
-		//addPoints(new AllPoints(), input, plot, 0x33000000);
+		Input input = Input.random(100000);
+		addPoints(new Greedy(new Solver.AbsoluteAddScore(), 0).solve(input), plot, 0x77000000, "greedy");
+
+		SearchSubset solver = new SearchSubset();
+		float rnd = 1;
 		for (int i = 0; i < Math.log(input.a.length + input.b.length); i++) {
-			addPoints(new Greedy(new Solver.AbsoluteAddScore()), input, plot, 0x77FF0000);
-			addPoints(new InvertedGreedy(new Solver.AbsoluteAddScore()), input, plot, 0x770000FF);
+			solver.add(new Greedy(new Solver.AbsoluteAddScore(), rnd).solve(input));
+			solver.add(new InvertedGreedy(new Solver.AbsoluteAddScore(), rnd).solve(input));
 		}
-		//addPoints(new Memo(), input, plot, 0x770000FF);
-		//addPoints(new AllBest(), input, plot, 0x3300FF00);
+		solver.addDiagonals(input, (int)Math.log(input.a.length + input.b.length)+1);
+		//addPoints(new Memo().solve(input), plot, 0x330000FF, "best");
+		addPoints(solver.solve(input), plot, 0x77FF0000, "mine");
+		//addPoints(solver.allPoints(), plot, 0x330000FF, "allpoints");
     }
 
     public void draw() {
