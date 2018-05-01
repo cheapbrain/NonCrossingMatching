@@ -10,6 +10,15 @@ public interface Solver {
 
 	public class SearchSubset implements Solver {
 		private HashMap<Match, Integer> map = new HashMap<>();
+		private int diags, repeat;
+		private Solver s1, s2;
+		
+		public SearchSubset(Solver s1, Solver s2, int repeat, int diags) {
+			this.s1 = s1;
+			this.s2 = s2;
+			this.diags = diags;
+			this.repeat = repeat;
+		}
 
 		public void reset() {
 			for (Match m: map.keySet()) {
@@ -56,29 +65,31 @@ public interface Solver {
 				if (state.k == 4) {
 					int score = state.best + 1;
 					map.put(state.m, state.best);
+					
 					state = stack.pop();
 					if (score > state.best) state.best = score;
 				} else {
 					if (state.input.indA[state.k].length <= 0 || state.input.indB[state.k].length <= 0) {
 						state.k++;
-						continue;
-					}
-
-					int ii = state.input.firstA(state.k);
-					int jj = state.input.firstB(state.k);
-					state.k++;
-					int i = ii - state.input.a.start;
-					int j = jj - state.input.b.start;
-					Match m = new Match(ii, jj);
-
-					Integer sol = map.get(m);
-					if (sol == null) continue;
-					if (sol == 0) {
-						stack.push(state);
-						state = new State(0, 0, m, state.input.advance(i+1, j+1));
 					} else {
-						int score = sol + 1;
-						if (score > state.best) state.best = score;
+
+						int ii = state.input.firstA(state.k);
+						int jj = state.input.firstB(state.k);
+						state.k++;
+						int i = ii - state.input.a.start;
+						int j = jj - state.input.b.start;
+						Match m = new Match(ii, jj);
+	
+						Integer sol = map.get(m);
+						if (sol == null) {
+							
+						} else if (sol == 0) {
+							stack.push(state);
+							state = new State(0, 0, m, state.input.advance(i+1, j+1));
+						} else {
+							int score = sol + 1;
+							if (score > state.best) state.best = score;
+						}
 					}
 				}
 
@@ -86,31 +97,6 @@ public interface Solver {
 				if (state.m.a == -1 && state.k == 4) return state.best - 1;
 			}
 
-		}
-
-		public int memo2(Input input) {
-
-			int best = 0;
-
-			for (int k = 0; k < 4; k++) {
-				if (input.indA[k].length <= 0 || input.indB[k].length <= 0) continue;
-				int ii = input.firstA(k);
-				int jj = input.firstB(k);
-				int i = ii - input.a.start;
-				int j = jj - input.b.start;
-				Match m = new Match(ii, jj);
-
-				Integer sol = map.get(m);
-				if (sol == null) continue;
-				if (sol == 0) {
-					sol = 1 + memo(input.advance(i+1, j+1));
-					map.put(m, sol);
-				}
-
-				best = Math.max(best, sol);
-			}
-
-			return best;
 		}
 
 		public void getBestSolution(Input input, int score, Solution best) {
@@ -141,6 +127,15 @@ public interface Solver {
 
 		@Override
 		public Solution solve(Input input) {
+			map.clear();
+			
+			for (int i = 0; i < repeat; i++) {
+				add(s1.solve(input));
+				add(s2.solve(input));
+			}
+			
+			addDiagonals(input, diags);
+			
 			Solution sol = new Solution();
 			int score = memo(input);
 			getBestSolution(input, score, sol);
@@ -309,6 +304,7 @@ public interface Solver {
 		public Solution solve(Input input) {
 			Solution sol = new Solution();
 			Match dummy = new Match(0,0);
+			Match last = dummy;
 
 			for (;;) {
 				float max = Float.NEGATIVE_INFINITY;
@@ -317,7 +313,7 @@ public interface Solver {
 				for (int k = 0; k < 4; k++) {
 					if (input.indA[k].length <= 0 || input.indB[k].length <= 0) continue;
 					Match temp = new Match(input.lastA(k), input.lastB(k));
-					float tc = func.score(temp);
+					float tc = func.score(last, temp);
 					if ((tc + rand *(float)Math.random() > max) || (tc == max && Math.random() > 0.5)) {
 						max = tc;
 						next = temp;
@@ -327,6 +323,7 @@ public interface Solver {
 
 				int i = next.a - input.a.start;
 				int j = next.b - input.b.start;
+				last = next;
 				sol.add(next);
 				input = input.advanceBack(i-1, j-1);
 			}
@@ -347,7 +344,7 @@ public interface Solver {
 		public Solution solve(Input input) {
 			Solution sol = new Solution();
 			Match dummy = new Match(0, 0);
-
+			Match last = dummy;
 			for (;;) {
 				float max = Float.POSITIVE_INFINITY;
 				Match next = dummy;
@@ -355,7 +352,7 @@ public interface Solver {
 				for (int k = 0; k < 4; k++) {
 					if (input.indA[k].length <= 0 || input.indB[k].length <= 0) continue;
 					Match temp = new Match(input.firstA(k), input.firstB(k));
-					float tc = func.score(temp);
+					float tc = func.score(last, temp);
 					if ((tc + rand *(float)Math.random() < max) || (tc == max && Math.random() > 0.5)) {
 						max = tc;
 						next = temp;
@@ -365,6 +362,7 @@ public interface Solver {
 
 				int i = next.a - input.a.start;
 				int j = next.b - input.b.start;
+				last = next;
 				sol.add(next);
 				input = input.advance(i+1, j+1);
 			}
@@ -375,29 +373,29 @@ public interface Solver {
 	}
 
 	public interface ScoreFunction {
-		public float score(Match next);
+		public float score(Match prev, Match next);
 	}
 
 	public class AbsoluteAddScore implements ScoreFunction {
-		public float score(Match next) {
-			return next.a + next.b;
+		public float score(Match prev, Match next) {
+			return next.a + next.b - prev.a - prev.b;
 		}
 	}
 
 	public class AbsoluteMaxScore implements ScoreFunction {
-		public float score(Match next) {
+		public float score(Match prev, Match next) {
 			return Math.max(next.a, next.b);
 		}
 	}
 
 	public class CustomScore implements ScoreFunction {
-		public float score(Match next) {
+		public float score(Match prev, Match next) {
 			return 0.1f * Math.max(next.a, next.b) + next.a + next.b;
 		}
 	}
 
 	public class RandomScore implements ScoreFunction {
-		public float score(Match next) {
+		public float score(Match prev, Match next) {
 			return (float)Math.random();
 		}
 	}

@@ -2,86 +2,95 @@ package ermanno.ncm;
 
 import java.util.UUID;
 
+import ermanno.ncm.Solver.Memo;
 import ermanno.ncm.Solver.Greedy;
 import ermanno.ncm.Solver.InvertedGreedy;
 import ermanno.ncm.Solver.SearchSubset;
-import grafica.GPlot;
-import grafica.GPointsArray;
-import processing.core.PApplet;
 
-public class Main extends PApplet{
-
-	public static GPointsArray points1, points2;
-
-	public static void addPoints(Solution sol, GPlot plot, int color, String name) {
-		String id = UUID.randomUUID().toString();
-		GPointsArray points = getPoints(sol);
-		plot.addLayer(id, points);
-		plot.getLayer(id).setPointColor(color);
-		System.out.println(name+": "+sol.size());
-	}
-
-	public static GPointsArray getPoints(Solution sol) {
-		GPointsArray out = new GPointsArray(sol.size());
-
-		for (Match m : sol.matches) {
-			out.add((float)m.a, (float)m.b);
+public class Main {
+	
+	public static double measure(Solver solver, Input input) {
+		double tot = 0;
+		int count = 0;
+		double score = 0;
+		
+		for (;;) {
+			long start = System.nanoTime();
+			Solution sol = solver.solve(input);
+			long end = System.nanoTime();
+			double time = (double)(end - start) / 1000000000.0;
+			
+			score += sol.size();
+			tot += time;
+			count += 1;
+			if (tot > 0.0) {
+				tot = tot / count;
+				score = score / count;
+				//System.out.format("%d\t%.1f\t%.7f\n", input.a.length, score, tot);				
+				return score;
+			}
 		}
-
-		return out;
 	}
 
 	public static void main(String[] args) {
+		class Range {
+			private int max;
+			private double add = 1;
+			private double mul = 1;
+			public double i = 0;
+			
+			public Range (int min, int max) {
+				this.max = max;
+				this.i = min;
+			}
+			
+			public Range step(double add, double mul) {
+				this.add = add;
+				this.mul = mul;
+				return this;
+			}
+			
+			public boolean next() {
+				boolean old = i < max;
+				i = i * mul + add;
+				boolean next = i < max;
+				return !(old ^ next);
+			}
+			
+			public int i() {
+				return (int)i;
+			}
+			
+		}
+		
+		for (int i = 0; i < 100; i++) {
+			Range r = new Range(10, 1000).step(0, 1.5);
+			do {
+				Input input = Input.random(r.i());
+				
 
+				Solver greedy = new Greedy(new Solver.AbsoluteAddScore(), 1);
+				
+				double a = measure(greedy, input);
 
-		PApplet.main("ermanno.ncm.Main");
+				int count = (int)Math.log(input.a.length + input.b.length)+1;
+				float rnd = 1;
+				Solver s1 = new Greedy(new Solver.AbsoluteAddScore(), rnd);
+				Solver s2 = new InvertedGreedy(new Solver.AbsoluteAddScore(), rnd);
+				SearchSubset solver = new SearchSubset(s1, s2, count, count);
+				
+				double b = measure(solver, input);
+				
+				Solver memo = new Memo();
+				
+				double c = measure(memo, input);
+				
+				System.out.format("%d\t%.7f\t%.7f\t%.7f\n", input.a.length, c / c, b / c, a / c);
+				
+			} while(r.next());
+		}
+
 	}
 
-	public void settings() {
-		size(650, 650);
-		smooth(4);
-    }
-
-	GPlot plot;
-
-    public void setup() {
-		surface.setResizable(true);
-
-		plot = new GPlot(this);
-		plot.setPos(0, 0);
-		plot.setTitleText("alksdfljk");
-		plot.activatePanning();
-		plot.activateZooming(1.1f, CENTER, CENTER);
-
-		Input input = Input.random(100000);
-		addPoints(new Greedy(new Solver.AbsoluteAddScore(), 0).solve(input), plot, 0x77000000, "greedy");
-
-		SearchSubset solver = new SearchSubset();
-		float rnd = 1;
-		for (int i = 0; i < Math.log(input.a.length + input.b.length); i++) {
-			solver.add(new Greedy(new Solver.AbsoluteAddScore(), rnd).solve(input));
-			solver.add(new InvertedGreedy(new Solver.AbsoluteAddScore(), rnd).solve(input));
-		}
-		solver.addDiagonals(input, (int)Math.log(input.a.length + input.b.length)+1);
-		//addPoints(new Memo().solve(input), plot, 0x330000FF, "best");
-		addPoints(solver.solve(input), plot, 0x77FF0000, "mine");
-		//addPoints(solver.allPoints(), plot, 0x330000FF, "allpoints");
-    }
-
-    public void draw() {
-		plot.setDim(this.width - 100, this.height - 100);
-    	background(0x555555);
-
-		plot.beginDraw();
-		plot.drawBackground();
-		plot.drawBox();
-    	plot.drawGridLines(GPlot.BOTH);
-		plot.drawXAxis();
-		plot.drawYAxis();
-		plot.drawTitle();
-		plot.drawPoints();
-		plot.drawLine(1, 0);
-		plot.endDraw();
-    }
 
 }
