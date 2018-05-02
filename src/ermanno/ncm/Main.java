@@ -1,8 +1,11 @@
 package ermanno.ncm;
 
-import java.util.UUID;
-
 import ermanno.ncm.Solver.Memo;
+
+import java.awt.Color;
+
+import ermanno.grafica.Layer;
+import ermanno.grafica.Window;
 import ermanno.ncm.Solver.Greedy;
 import ermanno.ncm.Solver.InvertedGreedy;
 import ermanno.ncm.Solver.SearchSubset;
@@ -63,28 +66,41 @@ public class Main {
 			
 		}
 		
-		for (int i = 0; i < 100; i++) {
-			Range r = new Range(10, 1000).step(0, 1.5);
+		var plot = new Window("Quality", 300, 200);
+		
+		var layer1 = new Layer(true, Color.red);
+		var layer2 = new Layer(true, Color.blue);
+		var layer3 = new Layer(true, Color.green);
+		
+		plot.add(layer1);
+		plot.add(layer2);
+		plot.add(layer3);
+		
+		for (int i = 0; i < 1; i++) {
+			var r = new Range(10, 1000).step(100, 1);
 			do {
-				Input input = Input.random(r.i());
+				var input = Input.random(r.i());
 				
 
-				Solver greedy = new Greedy(new Solver.AbsoluteAddScore(), 1);
+				var greedy = new Greedy(new Solver.AbsoluteAddScore(), 1);
 				
-				double a = measure(greedy, input);
+				float a = (float)measure(greedy, input) * 100;
 
 				int count = (int)Math.log(input.a.length + input.b.length)+1;
 				float rnd = 1;
 				Solver s1 = new Greedy(new Solver.AbsoluteAddScore(), rnd);
 				Solver s2 = new InvertedGreedy(new Solver.AbsoluteAddScore(), rnd);
-				SearchSubset solver = new SearchSubset(s1, s2, count, count);
+				var solver = new SearchSubset(s1, s2, count, count);
 				
-				double b = measure(solver, input);
+				float b = (float)measure(solver, input) * 100;
 				
 				Solver memo = new Memo();
 				
-				double c = measure(memo, input);
+				float c = (float)measure(memo, input) * 100;
 				
+				layer1.add(r.i(), 1.0f);
+				layer2.add(r.i(), b/c);
+				layer3.add(r.i(), a/c);
 				System.out.format("%d\t%.7f\t%.7f\t%.7f\n", input.a.length, c / c, b / c, a / c);
 				
 			} while(r.next());
