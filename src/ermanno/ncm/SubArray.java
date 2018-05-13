@@ -1,9 +1,9 @@
 package ermanno.ncm;
 
 public class SubArray {
-	public final int[] array;
-	public final int start;
-	public final int length;
+	public int[] array;
+	public int start;
+	public int length;
 
 	public SubArray(int[] array) {
 		this.array = array;

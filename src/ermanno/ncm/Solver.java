@@ -12,7 +12,7 @@ public interface Solver {
 		private HashMap<Match, Integer> map = new HashMap<>();
 		private int diags, repeat;
 		private Solver s1, s2;
-		
+
 		public SearchSubset(Solver s1, Solver s2, int repeat, int diags) {
 			this.s1 = s1;
 			this.s2 = s2;
@@ -65,7 +65,7 @@ public interface Solver {
 				if (state.k == 4) {
 					int score = state.best + 1;
 					map.put(state.m, state.best);
-					
+
 					state = stack.pop();
 					if (score > state.best) state.best = score;
 				} else {
@@ -79,10 +79,10 @@ public interface Solver {
 						int i = ii - state.input.a.start;
 						int j = jj - state.input.b.start;
 						Match m = new Match(ii, jj);
-	
+
 						Integer sol = map.get(m);
 						if (sol == null) {
-							
+
 						} else if (sol == 0) {
 							stack.push(state);
 							state = new State(0, 0, m, state.input.advance(i+1, j+1));
@@ -128,14 +128,14 @@ public interface Solver {
 		@Override
 		public Solution solve(Input input) {
 			map.clear();
-			
+
 			for (int i = 0; i < repeat; i++) {
 				add(s1.solve(input));
 				add(s2.solve(input));
 			}
-			
+
 			addDiagonals(input, diags);
-			
+
 			Solution sol = new Solution();
 			int score = memo(input);
 			getBestSolution(input, score, sol);
@@ -151,6 +151,7 @@ public interface Solver {
 		}
 
 	}
+
 
 	public class AllPoints implements Solver {
 
@@ -254,7 +255,86 @@ public interface Solver {
 	}
 
 	public class Memo implements Solver {
-		public Solution memo(Input input, HashMap<Match, Solution> cache) {
+
+
+		public int memo(Input input, HashMap<Match, Integer> cache) {
+			class State {
+				int best; int k; Match m; Input input;
+				public State(int best, int k, Match m, Input input) { this.best=best; this.k=k; this.m=m; this.input=input; }
+			}
+
+			int maxsize = Math.min(input.a.length, input.b.length);
+
+			ArrayDeque<State> stack= new ArrayDeque<>(maxsize);
+
+			State state = new State(0, 0, new Match(-1, -1), input);
+
+			while (true) {
+
+				if (state.k == 4) {
+					int score = state.best + 1;
+					cache.put(state.m, state.best);
+
+					state = stack.pop();
+					if (score > state.best) state.best = score;
+				} else {
+					if (state.input.indA[state.k].length <= 0 || state.input.indB[state.k].length <= 0) {
+						state.k++;
+					} else {
+
+						int ii = state.input.firstA(state.k);
+						int jj = state.input.firstB(state.k);
+						state.k++;
+						int i = ii - state.input.a.start;
+						int j = jj - state.input.b.start;
+						Match m = new Match(ii, jj);
+
+						Integer sol = cache.get(m);
+						if (sol == null) {
+							stack.push(state);
+							state = new State(0, 0, m, state.input.advance(i+1, j+1));
+						} else {
+							int score = sol + 1;
+							if (score > state.best) state.best = score;
+						}
+					}
+				}
+
+
+				if (state.m.a == -1 && state.k == 4) return state.best - 1;
+			}
+
+		}
+
+		public void getBestSolution(Input input, int score, Solution best, HashMap<Match, Integer> cache) {
+			for (;;) {
+				boolean exit = true;
+				for (int k = 0; k < 4; k++) {
+					if (input.indA[k].length <= 0 || input.indB[k].length <= 0) continue;
+					int ii = input.firstA(k);
+					int jj = input.firstB(k);
+					int i = ii - input.a.start;
+					int j = jj - input.b.start;
+					Match m = new Match(ii, jj);
+
+					Integer sol = cache.get(m);
+					if (sol == null) continue;
+					if (sol == score) {
+						best.add(m);
+						Input temp = input.advance(i+1, j+1);
+						input = temp;
+						score--;
+						exit = false;
+						break;
+					}
+				}
+				if (exit) {
+					return;
+				}
+			}
+		}
+
+		public Solution memo2(Input input, HashMap<Match, Solution> cache) {
 			Solution best = new Solution();
 			if (input.a.length <= 0 || input.b.length <= 0) return best;
 
@@ -270,7 +350,7 @@ public interface Solver {
 				if (sol == null) {
 					sol = new Solution();
 					sol.add(m);
-					sol.add(memo(input.advance(i+1, j+1), cache));
+					sol.add(memo2(input.advance(i+1, j+1), cache));
 					cache.put(m, sol);
 				}
 
@@ -287,9 +367,11 @@ public interface Solver {
 		}
 
 		public Solution solve(Input input) {
-			HashMap<Match, Solution> cache = new HashMap<>();
-			Solution sol = memo(input, cache);
-			return sol;
+			HashMap<Match, Integer> cache = new HashMap<>();
+			int score = memo(input, cache);
+			Solution best = new Solution();
+			getBestSolution(input, score, best, cache);
+			return best;
 		}
 	}
 
