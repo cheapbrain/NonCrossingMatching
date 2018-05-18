@@ -107,7 +107,7 @@ public class Main {
 				Solver s1 = new Greedy(new Solver.AbsoluteAddScore(), rnd);
 				Solver s2 = new InvertedGreedy(new Solver.AbsoluteAddScore(), rnd);
 
-				Result heur = measure(new SearchSubset(s1, s2, lognm, lognm), input);
+				Result heur = measure(new SearchSubset(s1, s2, lognm, lognm, lognm), input);
 				Result greedy = measure(new Greedy(new Solver.AbsoluteAddScore(), 1), input);
 
 
@@ -120,7 +120,7 @@ public class Main {
 					for (int k = 0; k < 4; k++) {
 						score += Math.min(input.indA[k].length, input.indB[k].length);
 					}
-					score = (int)Math.round(0.658 * score);
+					score = (int)Math.round(0.666 * score);
 					best = new Result(0, score);
 				}
 
@@ -182,7 +182,7 @@ public class Main {
 			Solution curr = new SearchSubset(
 				new Greedy(new Solver.AbsoluteAddScore(), rnd),
 				new InvertedGreedy(new Solver.AbsoluteAddScore(), rnd),
-				lognm, lognm).solve(input);
+				lognm, lognm, lognm).solve(input);
 
 			float score;
 			if (best.size() == 0) score = 1000;
@@ -224,7 +224,9 @@ public class Main {
 	}
 
 	public static void main(String[] args) {
-		searchBadCases();
+
+		bench();
+	
 	}
 
 

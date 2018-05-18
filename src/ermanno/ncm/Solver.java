@@ -10,14 +10,15 @@ public interface Solver {
 
 	public class SearchSubset implements Solver {
 		private HashMap<Match, Integer> map = new HashMap<>();
-		private int diags, repeat;
+		private int diags, repeat, refine;
 		private Solver s1, s2;
 
-		public SearchSubset(Solver s1, Solver s2, int repeat, int diags) {
+		public SearchSubset(Solver s1, Solver s2, int repeat, int diags, int refine) {
 			this.s1 = s1;
 			this.s2 = s2;
 			this.diags = diags;
 			this.repeat = repeat;
+			this.refine = refine;
 		}
 
 		public void reset() {
@@ -43,6 +44,25 @@ public interface Solver {
 				for (int j = start; j <= end; j++) {
 					if (a[i] == b[j]) {
 						map.put(new Match(i, j), 0);
+					}
+				}
+			}
+		}
+		
+		public void growSelection(Input input, int range, Solution sol) {
+			int[] a = input.a.array;
+			int[] b = input.b.array;
+
+			for (Match m : sol.matches) {
+				int istart = Math.max(0, m.a - range);
+				int jstart = Math.max(0, m.b - range);
+				int iend = Math.min(a.length - 1, m.a + range);
+				int jend = Math.min(b.length - 1, m.b + range);
+				for (int i = istart; i <= iend; i++) {
+					for (int j = jstart; j <= jend; j++) {
+						if (a[i] == b[j]) {
+							map.put(new Match(i, j), 0);
+						}
 					}
 				}
 			}
@@ -129,16 +149,35 @@ public interface Solver {
 		public Solution solve(Input input) {
 			map.clear();
 
+			int bestgreedy = 0;
 			for (int i = 0; i < repeat; i++) {
-				add(s1.solve(input));
-				add(s2.solve(input));
+				Solution ss1 = s1.solve(input);
+				Solution ss2 = s2.solve(input);
+				growSelection(input, refine, ss1);
+				growSelection(input, refine, ss2);
+				//add(ss1);
+				//add(ss2);
+				
+				bestgreedy = Math.max(bestgreedy, ss1.size());
+				bestgreedy = Math.max(bestgreedy, ss2.size());
 			}
+			
+			System.out.println("greedy: " + bestgreedy);
 
 			addDiagonals(input, diags);
 
 			Solution sol = new Solution();
 			int score = memo(input);
 			getBestSolution(input, score, sol);
+			System.out.println("first search: " + sol.size());
+			
+			map.clear();
+			growSelection(input, refine, sol);
+
+			sol = new Solution();
+			score = memo(input);
+			getBestSolution(input, score, sol);
+			System.out.println("2nd search: "+sol.size());
 			return sol;
 		}
 
