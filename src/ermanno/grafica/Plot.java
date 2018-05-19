@@ -1,12 +1,14 @@
 package ermanno.grafica;
 
 import java.awt.BasicStroke;
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.Toolkit;
 import java.awt.event.InputEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
@@ -22,10 +24,10 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 
 public class Plot {
-	private JFrame frame;
+	public JFrame frame;
 	private MyPanel panel;
 
-	private List<Layer> layers = new ArrayList<>();
+	public List<Layer> layers = new ArrayList<>();
 	private int width;
 	private int height;
 	private float sx = 0.1f;
@@ -41,10 +43,20 @@ public class Plot {
 	private int ml = 80;
 	private int mr = 20;
 
+	private int gridHeight = 30;
+	private int gridWidth = 50;
+
+	private String ysuffix = "";
+	private String xsuffix = "";
+
 	private boolean autofit = true;
 
 	public void add(Layer layer) {
 		layers.add(layer);
+	}
+
+	public void clear() {
+		layers.clear();
 	}
 
 	public Layer get(int index) {
@@ -52,7 +64,7 @@ public class Plot {
 		return layers.get(index);
 	}
 
-	public Plot(String title, int width, int height) {
+	public Plot(String title, int width, int height, int x, int y) {
 		this.width = width;
 		this.height = height;
 		Plot instance = this;
@@ -63,18 +75,40 @@ public class Plot {
 		EventQueue.invokeLater(new Runnable() {
 			@Override
 			public void run() {
-				instance.setup(title, width, height);
+				instance.setup(title, width, height, x, y);
 			}
 		});
 	}
 
-	private void setup(String title, int width, int height) {
+	private void setup(String title, int width, int height, int x, int y) {
 		frame.setPreferredSize(new Dimension(width, height));
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		frame.add(panel);
+		frame.setLayout(new BorderLayout());
+		frame.add(panel, BorderLayout.CENTER);
 		frame.pack();
-		frame.setLocationRelativeTo(null);
+		Dimension dimension = Toolkit.getDefaultToolkit().getScreenSize();
+		int sx = (int) (dimension.getWidth() / 2) + x;
+		int sy = (int) (dimension.getHeight() / 2) + y;
+		frame.setLocation(sx, sy);
 		frame.setVisible(true);
+	}
+
+	public void destroy() {
+		frame.setVisible(false);
+		frame.dispose();
+	}
+
+	public void setGrid(int width, int height) {
+		this.gridWidth = width;
+		this.gridHeight = height;
+	}
+
+	public void setXSuffix(String suffix) {
+		xsuffix = suffix;
+	}
+
+	public void setYSuffix(String suffix) {
+		ysuffix = suffix;
 	}
 
 	public void fit() {
@@ -162,6 +196,7 @@ public class Plot {
 		g.setRenderingHint(
 			RenderingHints.KEY_ANTIALIASING,
 			RenderingHints.VALUE_ANTIALIAS_ON);
+
 		g.setRenderingHint(
 			RenderingHints.KEY_TEXT_ANTIALIASING,
 			RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
@@ -173,9 +208,6 @@ public class Plot {
 		g.fillRect(0, 0, width, height);
 
 		{
-			int gridHeight = 30;
-			int gridWidth = 50;
-
 			int sx1 = ml;
 			int sy1 = mt;
 			int sx2 = width - mr;
@@ -183,11 +215,12 @@ public class Plot {
 
 			float dy = Math.abs(gridHeight / sy);
 			int p10 = (int)Math.ceil(Math.log10(dy));
-			int ndig = Math.max(-p10, 0) + 1;
+			int ndig = -p10 + 1;
 			dy = (float)Math.pow(10, p10);
 			if (Math.abs(dy * sy) / 5 > gridHeight) dy /= 5;
 			else if (Math.abs(dy * sy) / 2 > gridHeight) dy /= 2;
 			else ndig--;
+			ndig = Math.max(ndig, 0);
 
 			String pattern1 = "%."+ndig+"f";
 			String pattern2 = "%.2e";
@@ -201,7 +234,7 @@ public class Plot {
 				g.setColor(Color.lightGray);
 				g.drawLine(ml - 5, sy, width - mr, sy);
 				String pattern = (ndig > 4 || Math.abs(y) >= 100000) ? pattern2 : pattern1;
-				String label = String.format(pattern, y + 0.0);
+				String label = String.format(pattern, y + 0.0)+ysuffix;
 				Rectangle2D bounds = g.getFontMetrics().getStringBounds(label, g);
 				int fh = (int) bounds.getHeight();
 				int fw = (int) bounds.getWidth();
@@ -231,7 +264,7 @@ public class Plot {
 				g.setColor(Color.lightGray);
 				g.drawLine(sx, mt, sx, height-mb+5);
 				String pattern = (ndig > 4 || Math.abs(x) >= 100000) ? pattern2 : pattern1;
-				String label = String.format(pattern, x + 0.0);
+				String label = String.format(pattern, x + 0.0)+xsuffix;
 				Rectangle2D bounds = g.getFontMetrics().getStringBounds(label, g);
 				int fh = (int) bounds.getHeight();
 				int fw = (int) bounds.getWidth();
@@ -255,7 +288,8 @@ public class Plot {
 
 			int r = pointRadius;
 			int d = r*2+1;
-			g.setColor(l.color);
+			Color col = new Color((l.color.getRGB()&0xFFFFFF)+(l.alpha << 24), true);
+			g.setColor(col);
 
 			Point o = null;
 			for (Iterator<Point> itPoint = l.points.iterator(); itPoint.hasNext(); ) {

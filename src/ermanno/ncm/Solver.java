@@ -12,6 +12,7 @@ public interface Solver {
 		private HashMap<Match, Integer> map = new HashMap<>();
 		private int diags, repeat, refine;
 		private Solver s1, s2;
+		private Solution last = null;
 
 		public SearchSubset(Solver s1, Solver s2, int repeat, int diags, int refine) {
 			this.s1 = s1;
@@ -33,7 +34,9 @@ public interface Solver {
 			}
 		}
 
-		public void addDiagonals(Input input, int range) {
+		public Solution addDiagonals(Input input, int range) {
+			Solution out = new Solution();
+			if (diags == 0) return out;
 			int[] a = input.a.array;
 			int[] b = input.b.array;
 
@@ -44,12 +47,15 @@ public interface Solver {
 				for (int j = start; j <= end; j++) {
 					if (a[i] == b[j]) {
 						map.put(new Match(i, j), 0);
+						out.add(new Match(i, j));
 					}
 				}
 			}
+			return out;
 		}
-		
-		public void growSelection(Input input, int range, Solution sol) {
+
+		public Solution growSelection(Input input, int range, Solution sol) {
+			Solution out = new Solution();
 			int[] a = input.a.array;
 			int[] b = input.b.array;
 
@@ -62,10 +68,12 @@ public interface Solver {
 					for (int j = jstart; j <= jend; j++) {
 						if (a[i] == b[j]) {
 							map.put(new Match(i, j), 0);
+							out.add(new Match(i, j));
 						}
 					}
 				}
 			}
+			return out;
 		}
 
 		public int memo(Input input) {
@@ -144,6 +152,45 @@ public interface Solver {
 			}
 		}
 
+		public Solution step(Input input, int i) {
+			Solution sol = new Solution();
+
+			int i1 = repeat;
+			int i2 = i1 + repeat;
+			int i3 = i2 + 1;
+			int i4 = i3 + 1;
+			int i5 = i4 + 1;
+			int i6 = i5 + 1;
+			int i7 = i6 + 1;
+
+			if (i < i1) {
+				sol = s1.solve(input);
+				growSelection(input, refine, sol);
+			} else if (i < i2) {
+				sol = s2.solve(input);
+				growSelection(input, refine, sol);
+			} else if (i < i3) {
+				for (Match m: map.keySet()) {
+					sol.add(m);
+				}
+			} else if (i < i4) {
+				sol = addDiagonals(input, diags);
+			} else if (i < i5) {
+				int score = memo(input);
+				getBestSolution(input, score, sol);
+				last = sol;
+			} else if (i < i6) {
+				map.clear();
+				sol = growSelection(input, refine, last);
+			} else if (i < i7) {
+				int score = memo(input);
+				getBestSolution(input, score, sol);
+			} else {
+				sol = null;
+			}
+
+			return sol;
+		}
 
 		@Override
 		public Solution solve(Input input) {
@@ -157,27 +204,23 @@ public interface Solver {
 				growSelection(input, refine, ss2);
 				//add(ss1);
 				//add(ss2);
-				
+
 				bestgreedy = Math.max(bestgreedy, ss1.size());
 				bestgreedy = Math.max(bestgreedy, ss2.size());
 			}
-			
-			System.out.println("greedy: " + bestgreedy);
 
 			addDiagonals(input, diags);
 
 			Solution sol = new Solution();
 			int score = memo(input);
 			getBestSolution(input, score, sol);
-			System.out.println("first search: " + sol.size());
-			
+
 			map.clear();
 			growSelection(input, refine, sol);
 
 			sol = new Solution();
 			score = memo(input);
 			getBestSolution(input, score, sol);
-			System.out.println("2nd search: "+sol.size());
 			return sol;
 		}
 

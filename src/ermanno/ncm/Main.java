@@ -1,6 +1,15 @@
 package ermanno.ncm;
 
+import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.FlowLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
 
 import ermanno.grafica.Layer;
 import ermanno.grafica.Plot;
@@ -10,6 +19,13 @@ import ermanno.ncm.Solver.Memo;
 import ermanno.ncm.Solver.SearchSubset;
 
 public class Main {
+	static Color gray = new Color(0xA4A4A4);
+
+	static Color[] colors = {
+		new Color(0xF15854), new Color(0xFFC067), new Color(0x7192ef),
+		new Color(0x9FE363), new Color(0xEF75D9), new Color(0x4BD3D5),
+		new Color(0xAC5DDA), new Color(0x60BD68),
+	};
 
 	private static class Result {
 		public float time;
@@ -40,6 +56,118 @@ public class Main {
 		}
 	}
 
+
+	public static void demo() {
+		Solver s1 = new Greedy(new Solver.AbsoluteAddScore(), 5);
+		Solver s2 = new InvertedGreedy(new Solver.AbsoluteAddScore(), 5);
+		class State {
+			int i = 0;
+			int size = 51;
+			int diags = (int)Math.log(size+size) + 1;
+			int repeat = diags;
+			int expand = diags;
+			Input input = Input.random(size);
+			SearchSubset solver = new SearchSubset(s1, s2, repeat, diags, expand);
+		}
+		State s = new State();
+
+		Solution allPoints = new Solver.AllPoints().solve(s.input);
+
+		Plot plot = new Plot("Interactive", 600, 600, 0, -300);
+		plot.setGrid(50, 50);
+
+		Layer matches = new Layer(false, gray);
+		matches.alpha = 100;
+
+		matches.add(allPoints);
+
+		JButton reset = new JButton("Reset");
+		JButton next = new JButton("Next");
+
+		JTextField fSize = new JTextField(""+s.size, 4);
+		JLabel lSize = new JLabel("Size");
+		lSize.setLabelFor(fSize);
+
+		JTextField fDiags = new JTextField(""+s.diags, 4);
+		JLabel lDiags = new JLabel("Diagonals");
+		lDiags.setLabelFor(fDiags);
+
+		JTextField fRepeat = new JTextField(""+s.repeat, 4);
+		JLabel lRepeat = new JLabel("Repeat");
+		lDiags.setLabelFor(fRepeat);
+
+		JTextField fExpand = new JTextField(""+s.expand, 4);
+		JLabel lExpand = new JLabel("Expand");
+		lDiags.setLabelFor(fExpand);
+
+		JPanel controls = new JPanel(new FlowLayout());
+		controls.add(reset);
+		controls.add(next);
+		controls.add(lSize);
+		controls.add(fSize);
+		controls.add(lDiags);
+		controls.add(fDiags);
+		controls.add(lRepeat);
+		controls.add(fRepeat);
+		controls.add(lExpand);
+		controls.add(fExpand);
+
+
+		reset.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				plot.clear();
+
+				s.i = 0;
+				s.size = Integer.parseInt(fSize.getText());
+				s.diags = Integer.parseInt(fDiags.getText());
+				s.repeat = Integer.parseInt(fRepeat.getText());
+				s.expand = Integer.parseInt(fExpand.getText());
+				s.input = Input.random(s.size);
+				s.solver = new SearchSubset(s1, s2, s.repeat, s.diags, s.expand);
+
+				Solution allPoints = new Solver.AllPoints().solve(s.input);
+
+				Layer matches = new Layer(false, gray);
+				matches.alpha = 100;
+
+				matches.add(allPoints);
+				plot.add(matches);
+
+				plot.fit();
+				plot.update();
+			}
+		});
+
+		next.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				Solution sol = s.solver.step(s.input, s.i);
+				if (sol == null) return;
+
+				s.i++;
+
+				plot.layers.get(plot.layers.size()-1).alpha = 20;
+				Layer layer = new Layer(false, colors[s.i%8]);
+				layer.add(sol);
+				plot.add(layer);
+
+				plot.fit();
+				plot.update();
+			}
+		});
+
+		plot.frame.add(controls, BorderLayout.SOUTH);
+
+		plot.frame.validate();
+
+		plot.add(matches);
+
+		plot.fit();
+		plot.update();
+	}
 
 	public static void bench() {
 		class Range {
@@ -72,31 +200,38 @@ public class Main {
 
 		}
 
-		Plot plot1 = new Plot("Quality", 400, 300);
-		Plot plot2 = new Plot("Time", 400, 300);
+		Plot plot1 = new Plot("Quality", 600, 300, -600, -300);
+		plot1.setYSuffix("%");
+		Plot plot2 = new Plot("Time", 600, 300, -600, 0);
+		plot2.setYSuffix("s");
 
-		Color colorBest = new Color(0x60BD68);
-		Color colorHeur = new Color(0xF15854);
-		Color colorGreedy = new Color(0x5DA5DA);
+		Color colorBest = colors[0];
+		Color colorExpand = colors[1];
+		Color colorMulti = colors[2];
+		Color colorGreedy = colors[3];
 
 		Layer best1 = new Layer(true, colorBest);
-		Layer heur1 = new Layer(true, colorHeur);
+		Layer expand1 = new Layer(true, colorExpand);
+		Layer multi1 = new Layer(true, colorMulti);
 		Layer greedy1 = new Layer(true, colorGreedy);
 
 		Layer best2 = new Layer(true, colorBest);
-		Layer heur2 = new Layer(true, colorHeur);
+		Layer expand2 = new Layer(true, colorExpand);
+		Layer multi2 = new Layer(true, colorMulti);
 		Layer greedy2 = new Layer(true, colorGreedy);
 
 		plot1.add(best1);
-		plot1.add(heur1);
+		plot1.add(expand1);
+		plot1.add(multi1);
 		plot1.add(greedy1);
 
 		plot2.add(best2);
-		plot2.add(heur2);
+		plot2.add(expand2);
+		plot2.add(multi2);
 		plot2.add(greedy2);
 
 		for (int count = 0; ;count++) {
-			Range r = new Range(10, 10000).step(100, 1.1);
+			Range r = new Range(10, 4000).step(100, 1.1);
 			int i = 0;
 			do {
 				int n = r.i();
@@ -107,7 +242,8 @@ public class Main {
 				Solver s1 = new Greedy(new Solver.AbsoluteAddScore(), rnd);
 				Solver s2 = new InvertedGreedy(new Solver.AbsoluteAddScore(), rnd);
 
-				Result heur = measure(new SearchSubset(s1, s2, lognm, lognm, lognm), input);
+				Result multi = measure(new SearchSubset(s1, s2, lognm, lognm, 0), input);
+				Result expand = measure(new SearchSubset(s1, s2, lognm, lognm, lognm), input);
 				Result greedy = measure(new Greedy(new Solver.AbsoluteAddScore(), 1), input);
 
 
@@ -124,14 +260,18 @@ public class Main {
 					best = new Result(0, score);
 				}
 
-				heur.score = 100 * heur.score / best.score;
+				expand.score = 100 * expand.score / best.score;
+				multi.score = 100 * multi.score / best.score;
 				greedy.score = 100 * greedy.score / best.score;
 
 				best.score = 100;
 				best1.mix(n, best.score, i, count);
 
-				heur1.mix(n, heur.score, i, count);
-				heur2.mix(n, heur.time, i, count);
+				expand1.mix(n, expand.score, i, count);
+				expand2.mix(n, expand.time, i, count);
+
+				multi1.mix(n, multi.score, i, count);
+				multi2.mix(n, multi.time, i, count);
 
 				greedy1.mix(n, greedy.score, i, count);
 				greedy2.mix(n, greedy.time, i, count);
@@ -225,8 +365,14 @@ public class Main {
 
 	public static void main(String[] args) {
 
-		bench();
-	
+		new Thread() {
+			public void run() {
+				bench();
+			}
+		}.start();
+
+		demo();
+
 	}
 
 
